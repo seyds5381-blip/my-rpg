@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-<title>우리 왕국의 곳간</title>
+<title>송파 입성 대작전</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="왕국의 곳간">
+<meta name="apple-mobile-web-app-title" content="송파 입성 대작전">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="apple-touch-icon" href="icon-ledger.png">
+<link rel="apple-touch-icon" href="icon-songpa.png">
 <style>
   :root{
     --bg:#0B0906;
@@ -74,6 +74,7 @@
     font-family:Georgia,"Noto Serif KR",serif;font-size:20px;color:var(--gold-bright);
     margin:2px 0 0;text-shadow:0 0 12px rgba(212,175,86,0.4);letter-spacing:1px;
   }
+  .game-title .game-subtitle{font-size:11px;color:var(--mp-bright);margin-top:4px;}
 
   /* Party cards */
   .party-row{display:flex;gap:8px;}
@@ -142,6 +143,9 @@
   .syslog .entry{color:var(--parchment-dim);}
   .syslog .entry.income .tag{color:var(--income-bright);}
   .syslog .entry.expense .tag{color:var(--expense-bright);}
+  .syslog .entry.tappable{cursor:pointer;padding:2px 0;border-radius:3px;}
+  .syslog .entry.tappable:active{background:rgba(212,175,86,0.12);}
+  .syslog .edit-hint{color:var(--gold-dim);float:right;}
 
   .refresh-btn{
     display:block;margin:12px auto 0;background:transparent;border:1px solid var(--parchment-dim);
@@ -205,6 +209,15 @@
   #settingsOverlay.show{opacity:1;pointer-events:auto;}
   .s-label{font-size:10.5px;color:var(--parchment-dim);display:block;margin-bottom:4px;margin-top:2px;}
 
+  #actionOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;
+    z-index:1260;opacity:0;pointer-events:none;transition:opacity .25s ease;padding:0 8px 8px;
+  }
+  #actionOverlay.show{opacity:1;pointer-events:auto;}
+  .action-summary{font-size:12.5px;color:var(--parchment);line-height:1.6;padding:6px 2px;}
+  .modal-btn.edit{background:linear-gradient(180deg, var(--mp-bright), var(--mp));color:#fff;}
+  .modal-btn.delete{background:linear-gradient(180deg, var(--expense-bright), var(--expense));color:#fff;}
+
   .toast{
     position:fixed;top:14px;left:50%;transform:translate(-50%,-10px);
     background:linear-gradient(180deg, #3B2E22, #1c150d);border:1px solid var(--gold);color:var(--gold-bright);
@@ -214,14 +227,83 @@
   .toast.show{opacity:1;transform:translate(-50%,0);}
 
   .loading{text-align:center;color:var(--parchment-dim);font-size:12px;padding:20px;}
+
+  /* NPC teaser */
+  .npc-teaser{display:flex;align-items:center;gap:10px;}
+  .npc-teaser-icon{
+    width:44px;height:44px;border-radius:50%;background:#0E0C0A;border:2px solid var(--mp-bright);
+    display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;
+  }
+  .npc-teaser-text{flex:1;font-size:11.5px;color:var(--parchment-dim);line-height:1.4;}
+  .npc-teaser-btn{
+    background:linear-gradient(180deg, var(--mp-bright), var(--mp));border:1px solid #1a3550;
+    color:#fff;font-size:11.5px;font-weight:700;padding:8px 12px;border-radius:4px;cursor:pointer;
+    font-family:Georgia,"Noto Serif KR",serif;flex-shrink:0;
+  }
+
+  /* NPC dialogue overlay */
+  #npcOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;
+    z-index:1250;opacity:0;pointer-events:none;transition:opacity .25s ease;padding:0 8px 8px;
+  }
+  #npcOverlay.show{opacity:1;pointer-events:auto;}
+  .npc-box{
+    width:100%;max-width:460px;background:linear-gradient(180deg, #3B2E22, #1c150d);
+    border:2px solid var(--gold);border-radius:6px;padding:14px;box-shadow:0 -6px 24px rgba(0,0,0,0.7);
+  }
+  .npc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .npc-portrait{
+    width:48px;height:48px;border-radius:6px;background:#0E0C0A;border:2px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;
+  }
+  .npc-name{font-size:14.5px;font-weight:700;color:var(--gold-bright);}
+  .npc-role{font-size:10.5px;color:var(--mp-bright);}
+  .npc-text{font-size:13px;line-height:1.7;color:var(--parchment);min-height:90px;padding:4px 2px 10px;white-space:pre-line;}
+  .npc-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .npc-page{font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--parchment-dim);}
+  .npc-btns{display:flex;gap:6px;}
+  .npc-btn{
+    background:linear-gradient(180deg, var(--gold), var(--gold-dim));border:1px solid #6b5a2e;
+    color:#1a140d;font-weight:700;font-size:12px;padding:7px 16px;border-radius:3px;cursor:pointer;
+    font-family:Georgia,"Noto Serif KR",serif;
+  }
+  .npc-btn.ghost{background:transparent;border:1px solid var(--parchment-dim);color:var(--parchment-dim);font-weight:400;}
+
+  /* Roadmap */
+  .road-card{
+    border:1px solid var(--gold-dim);background:rgba(0,0,0,0.25);border-radius:5px;
+    padding:11px;margin-bottom:9px;
+  }
+  .road-card:last-child{margin-bottom:0;}
+  .road-card.done{border-color:var(--income); background:rgba(111,191,115,0.08);}
+  .road-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
+  .road-period{font-family:'SF Mono','Consolas',monospace;font-size:9.5px;color:var(--gold-dim);}
+  .road-status{font-family:'SF Mono','Consolas',monospace;font-size:9.5px;}
+  .road-status.done{color:var(--income-bright);}
+  .road-status.pending{color:var(--parchment-dim);}
+  .road-title{font-size:13.5px;font-weight:700;margin-bottom:4px;}
+  .road-card.done .road-title{color:var(--income-bright);}
+  .road-desc{font-size:11px;color:var(--parchment-dim);line-height:1.5;margin-bottom:7px;}
+  .road-bar-outer{height:8px;background:#0E0C0A;border:1px solid rgba(0,0,0,0.6);border-radius:2px;overflow:hidden;}
+  .road-bar-inner{height:100%;background:linear-gradient(180deg, var(--gold-bright), var(--gold-dim));}
+  .road-card.done .road-bar-inner{background:linear-gradient(180deg, var(--income-bright), var(--income));}
+  .road-amt{font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--parchment-dim);text-align:right;margin-top:3px;}
+
+  /* Balance sheet */
+  .bs-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;}
+  .bs-row .v{font-family:'SF Mono','Consolas',monospace;font-weight:700;}
+  .bs-divider{border-top:1px solid var(--gold-dim);margin:4px 0;}
+  .bs-row.total{font-size:14.5px;padding-top:8px;}
+  .bs-note{font-size:10px;color:var(--parchment-dim);margin-top:8px;line-height:1.5;}
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <div class="game-title">
-    <div class="sub">O U R &nbsp; K I N G D O M</div>
-    <h1>우리 왕국의 곳간</h1>
+    <div class="sub">O P E R A T I O N &nbsp; S O N G P A</div>
+    <h1>송파 입성 대작전</h1>
+    <div class="game-subtitle">🏙️ 목표: 문정동 가든파이브 인근 정착</div>
   </div>
 
   <div class="frame">
@@ -255,6 +337,32 @@
     <div class="action-row">
       <button class="action-btn income" id="incomeBtn">+ 수입 기록</button>
       <button class="action-btn expense" id="expenseBtn">- 지출 기록</button>
+    </div>
+  </div>
+
+  <div class="frame">
+    <div class="c1"></div><div class="c2"></div><div class="c3"></div><div class="c4"></div>
+    <div class="frame-title">가 족 로 드 맵 — 서 울 입 성 대 장 정</div>
+    <div id="roadmapBox"></div>
+  </div>
+
+  <div class="frame">
+    <div class="c1"></div><div class="c2"></div><div class="c3"></div><div class="c4"></div>
+    <div class="frame-title">재 무 상 태 표 (실시간)</div>
+    <div class="bs-row"><span>🏦 자산 (Assets)</span><span class="v income" id="bsAssets">0원</span></div>
+    <div class="bs-row"><span>💳 부채 (Liabilities)</span><span class="v expense" id="bsLiab">0원</span></div>
+    <div class="bs-divider"></div>
+    <div class="bs-row total"><span>👑 자본 (Equity)</span><span class="v net" id="bsEquity">0원</span></div>
+    <div class="bs-note">※ 자산·부채는 "⚙️ 목표 설정"에서 직접 갱신해주세요. 가계부에 기록된 수입/지출은 자산에 자동 반영됩니다.</div>
+  </div>
+
+  <div class="frame">
+    <div class="c1"></div><div class="c2"></div><div class="c3"></div><div class="c4"></div>
+    <div class="frame-title">왕 실 집 사</div>
+    <div class="npc-teaser">
+      <div class="npc-teaser-icon">🧓</div>
+      <div class="npc-teaser-text">이대감이 이번 달 곳간 상황을 살펴보고 조언을 드리겠습니다.</div>
+      <button class="npc-teaser-btn" id="npcOpenBtn">대화하기</button>
     </div>
   </div>
 
@@ -302,6 +410,10 @@
     <input type="number" inputmode="numeric" class="modal-input" id="setShortGoal" placeholder="예: 10000000">
     <label class="s-label">📅 이번 달 지출 예산 (원)</label>
     <input type="number" inputmode="numeric" class="modal-input" id="setBudget" placeholder="예: 2000000">
+    <label class="s-label">🏦 기초 자산 (전세금 등, 가계부 기록 이전부터 있던 자산)</label>
+    <input type="number" inputmode="numeric" class="modal-input" id="setStartAssets" placeholder="예: 50000000">
+    <label class="s-label">💳 부채 (전세자금대출 등, 갚을수록 직접 업데이트)</label>
+    <input type="number" inputmode="numeric" class="modal-input" id="setStartLiab" placeholder="예: 0">
     <div class="modal-btns">
       <button class="modal-btn cancel" id="settingsCancel">취소</button>
       <button class="modal-btn submit" id="settingsSubmit">저장하기</button>
@@ -314,6 +426,38 @@
   <div class="person-choice">
     <div class="person-opt" data-person="yoo"><span class="ic">🧙</span><span>법사 유대승</span></div>
     <div class="person-opt" data-person="wife"><span class="ic">👸</span><span>공주님</span></div>
+  </div>
+</div>
+
+<div id="npcOverlay">
+  <div class="npc-box">
+    <div class="npc-head">
+      <div class="npc-portrait">🧓</div>
+      <div>
+        <div class="npc-name">왕실 집사 이대감</div>
+        <div class="npc-role" id="npcRole">곳간 살림 보고</div>
+      </div>
+    </div>
+    <div class="npc-text" id="npcText"></div>
+    <div class="npc-footer">
+      <div class="npc-page" id="npcPage">1 / 1</div>
+      <div class="npc-btns">
+        <button class="npc-btn ghost" id="npcCloseBtn">닫기</button>
+        <button class="npc-btn" id="npcNextBtn">다음</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="actionOverlay">
+  <div class="modal-box">
+    <div class="modal-title">이 기록을 어떻게 할까요?</div>
+    <div class="action-summary" id="actionSummary"></div>
+    <div class="modal-btns" style="margin-top:12px;">
+      <button class="modal-btn cancel" id="actionCancelBtn">취소</button>
+      <button class="modal-btn edit" id="actionEditBtn">수정</button>
+      <button class="modal-btn delete" id="actionDeleteBtn">삭제</button>
+    </div>
   </div>
 </div>
 
@@ -336,8 +480,33 @@ const PERSON_INFO = {
   wife: {name:"공주님", icon:"👸"},
 };
 
+const ROADMAP = [
+  {
+    id:"r1", period:"1단계", title:"월 가구소득 500만원",
+    desc:"매달 500만원 이상 벌어본 달이 있으면 달성으로 인정합니다.",
+    type:"monthly_income", target:5000000
+  },
+  {
+    id:"r2", period:"2단계", title:"유동자산 1,000만원 확보",
+    desc:"가계부 기록 시작 이후 실제로 모은 저축액(수입-지출 누적) 기준입니다.",
+    type:"ledger_net", target:10000000
+  },
+  {
+    id:"r3", period:"3단계 (2년 목표)", title:"순자산 1억원",
+    desc:"기초 자산(전세금 등) + 그동안 모은 저축액을 합산한 총자산 기준입니다.",
+    type:"total_assets", target:100000000
+  },
+  {
+    id:"r4", period:"4단계 (10년 목표)", title:"송파 입성 — 가든파이브 인근",
+    desc:"문정동 국민평형(84㎡) 시세는 약 15~18억원대(2025년 평당가 기준)로 9억원을 넘어 신생아 특례대출 대상에서 제외됩니다. 규제지역 일반 대출은 자기자본 비중이 커야 하니, 우선 자기자본 약 6~8억원을 목표로 잡고 나머지는 대출로 채우는 전략이 현실적입니다. 여의치 않다면 문정동 내 구축 소형平, 또는 인접한 거여·마천동도 대안이 될 수 있습니다.",
+    type:"total_assets", target:700000000
+  },
+];
+
 let myPerson = localStorage.getItem("ledger_person");
 let entries = [];
+let currentNet = 0;
+let currentTotalAssets = 0;
 let selectedCat = null;
 let modalMode = "expense";
 let settings = {
@@ -345,7 +514,9 @@ let settings = {
   longGoal: 3000000000,
   shortLabel: "현실 목표",
   shortGoal: 10000000,
-  monthlyBudget: 0
+  monthlyBudget: 0,
+  startingAssets: 50000000,
+  startingLiabilities: 0
 };
 
 function todayStr(){
@@ -422,6 +593,30 @@ async function pushEntry(entry){
   }
 }
 
+async function updateEntry(id, entry){
+  try{
+    await fetch(`${DB_URL}/ledger/entries/${id}.json`, {
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(entry)
+    });
+  }catch(e){
+    console.error("수정 실패", e);
+    showToast("⚠️ 수정에 실패했어요, 다시 시도해주세요");
+    throw e;
+  }
+}
+
+async function deleteEntry(id){
+  try{
+    await fetch(`${DB_URL}/ledger/entries/${id}.json`, { method:"DELETE" });
+  }catch(e){
+    console.error("삭제 실패", e);
+    showToast("⚠️ 삭제에 실패했어요, 다시 시도해주세요");
+    throw e;
+  }
+}
+
 function isThisMonth(ts){
   const d = new Date(ts);
   const now = new Date();
@@ -464,16 +659,19 @@ function renderTreasury(){
   const totalIncome = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
   const totalExpense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
   const net = totalIncome - totalExpense;
+  const totalAssets = (settings.startingAssets||0) + net;
+  currentNet = net;
+  currentTotalAssets = totalAssets;
 
   document.getElementById("longGoalLabel").textContent = `🏰 ${settings.longLabel}`;
-  const longPct = Math.max(0, Math.min(100, (net/settings.longGoal)*100));
+  const longPct = Math.max(0, Math.min(100, (totalAssets/settings.longGoal)*100));
   document.getElementById("goalBar").style.width = longPct+"%";
-  document.getElementById("goalPct").textContent = `${fmt(net)} / ${fmt(settings.longGoal)} (${longPct.toFixed(longPct<1?4:2)}%)`;
+  document.getElementById("goalPct").textContent = `${fmt(totalAssets)} / ${fmt(settings.longGoal)} (${longPct.toFixed(longPct<1?4:2)}%)`;
 
   document.getElementById("shortGoalLabel").textContent = `🌱 ${settings.shortLabel}`;
-  const shortPct = Math.max(0, Math.min(100, (net/settings.shortGoal)*100));
+  const shortPct = Math.max(0, Math.min(100, (totalAssets/settings.shortGoal)*100));
   document.getElementById("shortGoalBar").style.width = shortPct+"%";
-  document.getElementById("shortGoalPct").textContent = `${fmt(net)} / ${fmt(settings.shortGoal)} (${shortPct.toFixed(1)}%)`;
+  document.getElementById("shortGoalPct").textContent = `${fmt(totalAssets)} / ${fmt(settings.shortGoal)} (${shortPct.toFixed(1)}%)`;
 
   const budgetBar = document.getElementById("budgetBar");
   const budgetPctEl = document.getElementById("budgetPct");
@@ -528,13 +726,63 @@ function renderLog(){
     const label = e.type==='income'
       ? `${info.icon} ${info.name}: 수입 +${fmt(e.amount)}${e.memo?` (${e.memo})`:''}`
       : `${info.icon} ${info.name}: ${catInfo?catInfo.icon+' '+catInfo.name:''} -${fmt(e.amount)}${e.memo?` (${e.memo})`:''}`;
-    return `<div class="entry ${e.type}"><span class="tag">[${time}]</span> ${label}</div>`;
+    return `<div class="entry ${e.type} tappable" data-id="${e.id}"><span class="tag">[${time}]</span> ${label} <span class="edit-hint">✎</span></div>`;
   }).join("");
+  box.querySelectorAll(".entry.tappable").forEach(row=>{
+    row.addEventListener("click", ()=>openEntryActions(row.getAttribute("data-id")));
+  });
+}
+
+function bestMonthIncome(){
+  const byMonth = {};
+  entries.filter(e=>e.type==='income').forEach(e=>{
+    const d = new Date(e.ts);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    byMonth[key] = (byMonth[key]||0) + e.amount;
+  });
+  const vals = Object.values(byMonth);
+  return vals.length ? Math.max(...vals) : 0;
+}
+
+function renderRoadmap(){
+  const box = document.getElementById("roadmapBox");
+  const bestIncome = bestMonthIncome();
+  box.innerHTML = ROADMAP.map(r=>{
+    let current, target = r.target;
+    if(r.type === "monthly_income") current = bestIncome;
+    else if(r.type === "ledger_net") current = currentNet;
+    else current = currentTotalAssets;
+
+    const done = current >= target;
+    const pct = Math.max(0, Math.min(100, (current/target)*100));
+    return `
+      <div class="road-card ${done?'done':''}">
+        <div class="road-top">
+          <span class="road-period">${r.period}</span>
+          <span class="road-status ${done?'done':'pending'}">${done?'✓ 달성':'진행중'}</span>
+        </div>
+        <div class="road-title">${r.title}</div>
+        <div class="road-desc">${r.desc}</div>
+        <div class="road-bar-outer"><div class="road-bar-inner" style="width:${pct}%"></div></div>
+        <div class="road-amt">${fmt(current)} / ${fmt(target)} (${pct.toFixed(1)}%)</div>
+      </div>`;
+  }).join("");
+}
+
+function renderBalanceSheet(){
+  const assets = currentTotalAssets;
+  const liab = settings.startingLiabilities || 0;
+  const equity = assets - liab;
+  document.getElementById("bsAssets").textContent = fmt(assets);
+  document.getElementById("bsLiab").textContent = fmt(liab);
+  document.getElementById("bsEquity").textContent = fmt(equity);
 }
 
 function renderAll(){
   renderParty();
   renderTreasury();
+  renderRoadmap();
+  renderBalanceSheet();
   renderCatReport();
   renderLog();
 }
@@ -555,13 +803,20 @@ function renderCatGrid(){
   });
 }
 
-function openEntryModal(mode){
+let editingId = null;
+
+function openEntryModal(mode, existingEntry){
   modalMode = mode;
-  selectedCat = null;
-  document.getElementById("modalTitle").textContent = mode==='income' ? "수입 기록" : "지출 기록";
-  document.getElementById("modalDate").value = todayStr();
-  document.getElementById("modalAmount").value = "";
-  document.getElementById("modalMemo").value = "";
+  editingId = existingEntry ? existingEntry.id : null;
+  selectedCat = existingEntry ? (existingEntry.category || null) : null;
+  document.getElementById("modalTitle").textContent =
+    (editingId ? "수정 — " : "") + (mode==='income' ? "수입 기록" : "지출 기록");
+
+  const d = existingEntry ? new Date(existingEntry.ts) : new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById("modalDate").value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  document.getElementById("modalAmount").value = existingEntry ? existingEntry.amount : "";
+  document.getElementById("modalMemo").value = existingEntry ? (existingEntry.memo||"") : "";
   document.getElementById("catGrid").style.display = mode==='income' ? "none" : "grid";
   renderCatGrid();
   document.getElementById("modalOverlay").classList.add("show");
@@ -584,9 +839,47 @@ document.getElementById("modalSubmit").addEventListener("click", async ()=>{
     ? {type:"income", amount, memo, person: myPerson, ts}
     : {type:"expense", amount, category:selectedCat, memo, person: myPerson, ts};
 
-  await pushEntry(entry);
+  if(editingId){
+    await updateEntry(editingId, entry);
+    showToast("✎ 기록이 수정됐어요");
+  }else{
+    await pushEntry(entry);
+    showToast(modalMode==='income' ? `💰 수입 +${fmt(amount)} 기록됨` : `📦 지출 -${fmt(amount)} 기록됨`);
+  }
+  editingId = null;
   document.getElementById("modalOverlay").classList.remove("show");
-  showToast(modalMode==='income' ? `💰 수입 +${fmt(amount)} 기록됨` : `📦 지출 -${fmt(amount)} 기록됨`);
+  await loadEntries();
+});
+
+// ---- Entry action sheet (tap a log row → edit or delete) ----
+let actionTargetId = null;
+function openEntryActions(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  actionTargetId = id;
+  const info = PERSON_INFO[e.person] || {name:'???', icon:'❓'};
+  const catInfo = CATEGORIES.find(c=>c.id===e.category);
+  const time = new Date(e.ts).toLocaleDateString('ko-KR');
+  const label = e.type==='income'
+    ? `${info.icon} ${info.name} · ${time}\n수입 +${fmt(e.amount)}${e.memo?` (${e.memo})`:''}`
+    : `${info.icon} ${info.name} · ${time}\n${catInfo?catInfo.icon+' '+catInfo.name:''} 지출 -${fmt(e.amount)}${e.memo?` (${e.memo})`:''}`;
+  document.getElementById("actionSummary").textContent = label;
+  document.getElementById("actionOverlay").classList.add("show");
+}
+document.getElementById("actionCancelBtn").addEventListener("click", ()=>{
+  document.getElementById("actionOverlay").classList.remove("show");
+});
+document.getElementById("actionEditBtn").addEventListener("click", ()=>{
+  const e = entries.find(x=>x.id===actionTargetId);
+  document.getElementById("actionOverlay").classList.remove("show");
+  if(e) openEntryModal(e.type, e);
+});
+document.getElementById("actionDeleteBtn").addEventListener("click", async ()=>{
+  if(!actionTargetId) return;
+  if(!confirm("이 기록을 정말 삭제할까요? 되돌릴 수 없어요.")) return;
+  await deleteEntry(actionTargetId);
+  document.getElementById("actionOverlay").classList.remove("show");
+  showToast("🗑️ 기록이 삭제됐어요");
   await loadEntries();
 });
 
@@ -597,6 +890,8 @@ document.getElementById("settingsBtn").addEventListener("click", ()=>{
   document.getElementById("setShortLabel").value = settings.shortLabel;
   document.getElementById("setShortGoal").value = settings.shortGoal;
   document.getElementById("setBudget").value = settings.monthlyBudget || "";
+  document.getElementById("setStartAssets").value = settings.startingAssets || "";
+  document.getElementById("setStartLiab").value = settings.startingLiabilities || "";
   document.getElementById("settingsOverlay").classList.add("show");
 });
 document.getElementById("settingsCancel").addEventListener("click", ()=>{
@@ -608,7 +903,9 @@ document.getElementById("settingsSubmit").addEventListener("click", async ()=>{
     longGoal: parseInt(document.getElementById("setLongGoal").value,10) || 3000000000,
     shortLabel: document.getElementById("setShortLabel").value || "현실 목표",
     shortGoal: parseInt(document.getElementById("setShortGoal").value,10) || 10000000,
-    monthlyBudget: parseInt(document.getElementById("setBudget").value,10) || 0
+    monthlyBudget: parseInt(document.getElementById("setBudget").value,10) || 0,
+    startingAssets: parseInt(document.getElementById("setStartAssets").value,10) || 0,
+    startingLiabilities: parseInt(document.getElementById("setStartLiab").value,10) || 0
   };
   await saveSettings(newSettings);
   document.getElementById("settingsOverlay").classList.remove("show");
@@ -638,6 +935,97 @@ document.getElementById("switchBtn").addEventListener("click", ()=>{
 });
 
 document.getElementById("refreshBtn").addEventListener("click", loadEntries);
+
+// ---- NPC dialogue (dynamic, based on live data) ----
+function buildNpcDialogue(){
+  const monthEntries = entries.filter(e=>isThisMonth(e.ts));
+  const mIncome = monthEntries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const mExpense = monthEntries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const totalIncome = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const totalExpense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  const net = totalIncome - totalExpense;
+
+  const pages = [];
+
+  // Page 1: greeting + this month summary
+  pages.push(
+    `어서 오십시오. 이번 달 곳간을 살펴보고 왔습니다.\n\n이번 달 수입은 ${fmt(mIncome)}, 지출은 ${fmt(mExpense)}이었습니다. 순이익은 ${fmt(mIncome-mExpense)}이군요.`
+  );
+
+  // Page 2: budget status
+  if(settings.monthlyBudget > 0){
+    if(mExpense <= settings.monthlyBudget){
+      const remain = settings.monthlyBudget - mExpense;
+      pages.push(`정해두신 예산 ${fmt(settings.monthlyBudget)} 안에서 잘 관리하고 계십니다. 아직 ${fmt(remain)} 여유가 있으니, 이대로만 가시면 됩니다.`);
+    }else{
+      const over = mExpense - settings.monthlyBudget;
+      pages.push(`송구하오나, 이번 달 지출이 정해두신 예산을 ${fmt(over)} 초과했습니다.\n\n다음 달에는 조금 더 살펴보시는 게 좋겠습니다. 너무 걱정은 마십시오, 다음 장에서 어디를 아낄 수 있을지 말씀드리겠습니다.`);
+    }
+  }else{
+    pages.push(`아직 이번 달 예산을 정해두지 않으셨군요. "⚙️ 목표 설정"에서 예산을 정해두시면, 제가 매달 상황을 더 정확히 살펴드릴 수 있습니다.`);
+  }
+
+  // Page 3: top spending category tip
+  const catSums = {};
+  monthEntries.filter(e=>e.type==='expense').forEach(e=>{ catSums[e.category] = (catSums[e.category]||0) + e.amount; });
+  const topCatId = Object.keys(catSums).sort((a,b)=>catSums[b]-catSums[a])[0];
+  if(topCatId){
+    const catInfo = CATEGORIES.find(c=>c.id===topCatId);
+    const tips = {
+      food: "외식보다 장을 봐서 직접 해 드시는 날을 며칠만 늘려도 꽤 차이가 납니다.",
+      transport: "정기권이나 대중교통 할인 카드를 쓰고 계신지 한번 확인해보십시오.",
+      medical: "건강은 아끼실 부분이 아닙니다. 다만 정기 검진으로 큰 지출을 예방하는 것도 방법입니다.",
+      housing: "공과금은 계절별 편차가 크니, 연간 평균으로 보시면 마음이 편하실 겁니다.",
+      education: "아이를 위한 투자는 길게 보시는 게 맞습니다. 다만 중복되는 교육비는 없는지 한번 점검해보십시오.",
+      childcare: "육아용품은 공동구매나 중고 거래를 활용하시면 부담을 꽤 줄일 수 있습니다.",
+      telecom: "통신비는 요금제를 반년에 한 번 정도 점검해보시면 의외로 아낄 구석이 있습니다.",
+      etc: "기타 지출이 많다면, 어디에 쓰였는지 메모를 조금 더 자세히 남겨보시길 권합니다.",
+    };
+    pages.push(`이번 달은 ${catInfo.icon} ${catInfo.name}에 ${fmt(catSums[topCatId])}로 가장 많이 쓰셨습니다.\n\n${tips[topCatId] || ''}`);
+  }
+
+  // Page 4: goal progress encouragement
+  const shortPct = settings.shortGoal > 0 ? Math.max(0, (net/settings.shortGoal)*100) : 0;
+  let encourage;
+  if(shortPct >= 100){
+    encourage = `놀랍습니다! "${settings.shortLabel}" 목표를 이미 달성하셨습니다. 새로운 목표를 세워보시는 건 어떻겠습니까?`;
+  }else if(shortPct >= 50){
+    encourage = `"${settings.shortLabel}" 목표의 절반을 넘어섰습니다 (${shortPct.toFixed(1)}%). 이 속도라면 충분히 해내실 겁니다.`;
+  }else if(shortPct > 0){
+    encourage = `"${settings.shortLabel}" 목표까지 아직 갈 길이 있지만 (${shortPct.toFixed(1)}%), 두 분이 함께 꾸준히 기록하고 계신 것 자체가 대단한 일입니다.`;
+  }else{
+    encourage = `아직 시작 단계이지만, 두 분이 함께 곳간을 살피기 시작하셨다는 것만으로도 이미 반은 이루신 겁니다.`;
+  }
+  pages.push(encourage + "\n\n오늘도 곳간을 살펴주셔서 감사합니다. 또 뵙겠습니다.");
+
+  return pages;
+}
+
+let npcPages = [];
+let npcPageIdx = 0;
+
+function renderNpcPage(){
+  document.getElementById("npcText").textContent = npcPages[npcPageIdx];
+  document.getElementById("npcPage").textContent = `${npcPageIdx+1} / ${npcPages.length}`;
+  document.getElementById("npcNextBtn").textContent = (npcPageIdx >= npcPages.length-1) ? "닫기" : "다음";
+}
+document.getElementById("npcOpenBtn").addEventListener("click", ()=>{
+  npcPages = buildNpcDialogue();
+  npcPageIdx = 0;
+  renderNpcPage();
+  document.getElementById("npcOverlay").classList.add("show");
+});
+document.getElementById("npcNextBtn").addEventListener("click", ()=>{
+  if(npcPageIdx < npcPages.length-1){
+    npcPageIdx++;
+    renderNpcPage();
+  }else{
+    document.getElementById("npcOverlay").classList.remove("show");
+  }
+});
+document.getElementById("npcCloseBtn").addEventListener("click", ()=>{
+  document.getElementById("npcOverlay").classList.remove("show");
+});
 
 (async function init(){
   checkPerson();
