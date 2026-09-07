@@ -102,6 +102,19 @@
     background:repeating-linear-gradient(90deg, transparent 0px, transparent 7px, rgba(0,0,0,0.4) 7px, rgba(0,0,0,0.4) 9px);
   }
   .goal-pct{text-align:center;font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--parchment-dim);margin-top:4px;}
+  .goal-bar-inner.short{background:linear-gradient(180deg, var(--rose-bright), var(--rose));}
+  .goal-bar-inner.budget.ok{background:linear-gradient(180deg, var(--income-bright), var(--income));}
+  .goal-bar-inner.budget.over{background:linear-gradient(180deg, var(--expense-bright), var(--expense));}
+  .gear-btn{
+    background:transparent;border:1px solid var(--gold-dim);color:var(--parchment-dim);
+    font-size:10px;padding:3px 8px;border-radius:10px;cursor:pointer;
+  }
+
+  /* Contribution stat */
+  .contrib{
+    font-family:'SF Mono','Consolas',monospace;font-size:9.5px;margin-top:2px;
+  }
+  .contrib.pos{color:var(--income-bright);}
 
   /* Action buttons */
   .action-row{display:flex;gap:8px;margin-top:10px;}
@@ -185,6 +198,13 @@
   .person-opt .ic{font-size:40px;display:block;margin-bottom:8px;}
   .person-opt span{font-size:12.5px;color:var(--parchment);}
 
+  #settingsOverlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.75);display:flex;align-items:flex-end;justify-content:center;
+    z-index:1200;opacity:0;pointer-events:none;transition:opacity .25s ease;padding:0 8px 8px;
+  }
+  #settingsOverlay.show{opacity:1;pointer-events:auto;}
+  .s-label{font-size:10.5px;color:var(--parchment-dim);display:block;margin-bottom:4px;margin-top:2px;}
+
   .toast{
     position:fixed;top:14px;left:50%;transform:translate(-50%,-10px);
     background:linear-gradient(180deg, #3B2E22, #1c150d);border:1px solid var(--gold);color:var(--gold-bright);
@@ -216,9 +236,22 @@
     <div class="treasury-row"><span>이번 달 수입</span><span class="v income" id="mIncome">0원</span></div>
     <div class="treasury-row"><span>이번 달 지출</span><span class="v expense" id="mExpense">0원</span></div>
     <div class="treasury-row"><span>이번 달 순이익</span><span class="v net" id="mNet">0원</span></div>
-    <div style="margin-top:8px; font-size:11px; color:var(--parchment-dim);">왕국 총자산 (목표: 30억원)</div>
+
+    <div style="margin-top:10px; font-size:11px; color:var(--parchment-dim); display:flex; justify-content:space-between; align-items:center;">
+      <span id="longGoalLabel">🏰 장기 목표</span>
+      <button class="gear-btn" id="settingsBtn">⚙️ 목표 설정</button>
+    </div>
     <div class="goal-bar-outer" style="margin-top:4px;"><div class="goal-bar-inner" id="goalBar" style="width:0%"></div></div>
     <div class="goal-pct" id="goalPct">0.00%</div>
+
+    <div style="margin-top:10px; font-size:11px; color:var(--parchment-dim);" id="shortGoalLabel">🌱 현실 목표</div>
+    <div class="goal-bar-outer short" style="margin-top:4px;"><div class="goal-bar-inner short" id="shortGoalBar" style="width:0%"></div></div>
+    <div class="goal-pct" id="shortGoalPct">0.00%</div>
+
+    <div style="margin-top:10px; font-size:11px; color:var(--parchment-dim);">이번 달 예산 관리</div>
+    <div class="goal-bar-outer budget" style="margin-top:4px;"><div class="goal-bar-inner budget" id="budgetBar" style="width:0%"></div></div>
+    <div class="goal-pct" id="budgetPct">예산 미설정</div>
+
     <div class="action-row">
       <button class="action-btn income" id="incomeBtn">+ 수입 기록</button>
       <button class="action-btn expense" id="expenseBtn">- 지출 기록</button>
@@ -245,12 +278,33 @@
 <div id="modalOverlay">
   <div class="modal-box">
     <div class="modal-title" id="modalTitle">지출 기록</div>
+    <input type="date" class="modal-input" id="modalDate">
     <input type="number" inputmode="numeric" class="modal-input" id="modalAmount" placeholder="금액 (원)">
     <div class="cat-grid" id="catGrid"></div>
     <input type="text" class="modal-input" id="modalMemo" placeholder="메모 (선택)">
     <div class="modal-btns">
       <button class="modal-btn cancel" id="modalCancel">취소</button>
       <button class="modal-btn submit" id="modalSubmit">기록하기</button>
+    </div>
+  </div>
+</div>
+
+<div id="settingsOverlay">
+  <div class="modal-box">
+    <div class="modal-title">우리 가족의 목표 설정</div>
+    <label class="s-label">🏰 장기 목표 이름</label>
+    <input type="text" class="modal-input" id="setLongLabel" placeholder="예: 우리의 최종 목표">
+    <label class="s-label">🏰 장기 목표 금액 (원)</label>
+    <input type="number" inputmode="numeric" class="modal-input" id="setLongGoal" placeholder="예: 3000000000">
+    <label class="s-label">🌱 현실 목표 이름</label>
+    <input type="text" class="modal-input" id="setShortLabel" placeholder="예: 올해 저축 목표">
+    <label class="s-label">🌱 현실 목표 금액 (원)</label>
+    <input type="number" inputmode="numeric" class="modal-input" id="setShortGoal" placeholder="예: 10000000">
+    <label class="s-label">📅 이번 달 지출 예산 (원)</label>
+    <input type="number" inputmode="numeric" class="modal-input" id="setBudget" placeholder="예: 2000000">
+    <div class="modal-btns">
+      <button class="modal-btn cancel" id="settingsCancel">취소</button>
+      <button class="modal-btn submit" id="settingsSubmit">저장하기</button>
     </div>
   </div>
 </div>
@@ -267,7 +321,6 @@
 
 <script>
 const DB_URL = "https://yooco-f7785-default-rtdb.firebaseio.com";
-const GOAL = 3000000000;
 const CATEGORIES = [
   {id:"food", name:"식비", icon:"🍚"},
   {id:"transport", name:"교통", icon:"🚗"},
@@ -286,6 +339,20 @@ const PERSON_INFO = {
 let myPerson = localStorage.getItem("ledger_person");
 let entries = [];
 let selectedCat = null;
+let modalMode = "expense";
+let settings = {
+  longLabel: "장기 목표",
+  longGoal: 3000000000,
+  shortLabel: "현실 목표",
+  shortGoal: 10000000,
+  monthlyBudget: 0
+};
+
+function todayStr(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
 
 function fmt(n){ return (n||0).toLocaleString('ko-KR')+"원"; }
 
@@ -294,6 +361,32 @@ function showToast(text){
   t.textContent = text;
   t.classList.add("show");
   setTimeout(()=>t.classList.remove("show"), 2000);
+}
+
+async function loadSettings(){
+  try{
+    const res = await fetch(`${DB_URL}/ledger/settings.json`);
+    const data = await res.json();
+    if(data){
+      settings = { ...settings, ...data };
+    }
+  }catch(e){
+    console.error("설정 불러오기 실패", e);
+  }
+}
+
+async function saveSettings(newSettings){
+  settings = newSettings;
+  try{
+    await fetch(`${DB_URL}/ledger/settings.json`, {
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(settings)
+    });
+  }catch(e){
+    console.error("설정 저장 실패", e);
+    showToast("⚠️ 설정 저장에 실패했어요");
+  }
 }
 
 async function loadEntries(){
@@ -343,11 +436,19 @@ function renderParty(){
     const thisMonthMine = mine.filter(e=>isThisMonth(e.ts));
     const count = thisMonthMine.length;
     const active = pid === myPerson;
+
+    // 기여 포인트: 본인이 기록한 수입 금액 + 지출 관리(건당 1,000P, 실제 돈이 아니라 "가계부를 성실히 관리한 기여")
+    const incomeContrib = thisMonthMine.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
+    const manageCount = thisMonthMine.filter(e=>e.type==='expense').length;
+    const manageContrib = manageCount * 1000;
+    const totalContrib = incomeContrib + manageContrib;
+
     return `
       <div class="party-card ${active?'active':''}">
         <div class="party-icon">${info.icon}</div>
         <div class="party-name">${info.name}${active?' (나)':''}</div>
         <div class="party-stat">이번달 ${count}건 기록</div>
+        <div class="contrib pos">기여 +${totalContrib.toLocaleString('ko-KR')}P</div>
       </div>`;
   }).join("");
 }
@@ -363,9 +464,31 @@ function renderTreasury(){
   const totalIncome = entries.filter(e=>e.type==='income').reduce((s,e)=>s+e.amount,0);
   const totalExpense = entries.filter(e=>e.type==='expense').reduce((s,e)=>s+e.amount,0);
   const net = totalIncome - totalExpense;
-  const pct = Math.max(0, Math.min(100, (net/GOAL)*100));
-  document.getElementById("goalBar").style.width = pct+"%";
-  document.getElementById("goalPct").textContent = `${fmt(net)} / 30억원 (${pct.toFixed(pct<1?4:2)}%)`;
+
+  document.getElementById("longGoalLabel").textContent = `🏰 ${settings.longLabel}`;
+  const longPct = Math.max(0, Math.min(100, (net/settings.longGoal)*100));
+  document.getElementById("goalBar").style.width = longPct+"%";
+  document.getElementById("goalPct").textContent = `${fmt(net)} / ${fmt(settings.longGoal)} (${longPct.toFixed(longPct<1?4:2)}%)`;
+
+  document.getElementById("shortGoalLabel").textContent = `🌱 ${settings.shortLabel}`;
+  const shortPct = Math.max(0, Math.min(100, (net/settings.shortGoal)*100));
+  document.getElementById("shortGoalBar").style.width = shortPct+"%";
+  document.getElementById("shortGoalPct").textContent = `${fmt(net)} / ${fmt(settings.shortGoal)} (${shortPct.toFixed(1)}%)`;
+
+  const budgetBar = document.getElementById("budgetBar");
+  const budgetPctEl = document.getElementById("budgetPct");
+  if(settings.monthlyBudget > 0){
+    const bPct = Math.min(100, (mExpense/settings.monthlyBudget)*100);
+    budgetBar.style.width = bPct+"%";
+    budgetBar.className = "goal-bar-inner budget " + (mExpense <= settings.monthlyBudget ? "ok" : "over");
+    const remain = settings.monthlyBudget - mExpense;
+    budgetPctEl.textContent = remain >= 0
+      ? `예산 내 ✓ (${fmt(remain)} 남음)`
+      : `예산 초과 (${fmt(-remain)} 초과)`;
+  }else{
+    budgetBar.style.width = "0%";
+    budgetPctEl.textContent = "예산 미설정 (⚙️에서 설정하세요)";
+  }
 }
 
 function renderCatReport(){
@@ -417,18 +540,7 @@ function renderAll(){
 }
 
 // ---- Income quick entry ----
-document.getElementById("incomeBtn").addEventListener("click", async ()=>{
-  const raw = prompt("이번에 들어온 수입을 입력하세요 (원 단위)\n예: 500000");
-  if(raw===null) return;
-  const amount = parseInt(raw.replace(/[^0-9]/g,''),10);
-  if(!amount || amount<=0){ alert("올바른 금액을 입력해주세요."); return; }
-  const memo = prompt("메모 (선택, 그냥 확인 눌러도 됩니다)") || "";
-  await pushEntry({type:"income", amount, memo, person: myPerson, ts: Date.now()});
-  showToast(`💰 수입 +${fmt(amount)} 기록됨`);
-  await loadEntries();
-});
-
-// ---- Expense modal ----
+// ---- Unified entry modal (income / expense) ----
 function renderCatGrid(){
   const grid = document.getElementById("catGrid");
   grid.innerHTML = CATEGORIES.map(c=>`
@@ -442,25 +554,66 @@ function renderCatGrid(){
     });
   });
 }
-document.getElementById("expenseBtn").addEventListener("click", ()=>{
+
+function openEntryModal(mode){
+  modalMode = mode;
   selectedCat = null;
+  document.getElementById("modalTitle").textContent = mode==='income' ? "수입 기록" : "지출 기록";
+  document.getElementById("modalDate").value = todayStr();
   document.getElementById("modalAmount").value = "";
   document.getElementById("modalMemo").value = "";
+  document.getElementById("catGrid").style.display = mode==='income' ? "none" : "grid";
   renderCatGrid();
   document.getElementById("modalOverlay").classList.add("show");
-});
+}
+document.getElementById("incomeBtn").addEventListener("click", ()=>openEntryModal("income"));
+document.getElementById("expenseBtn").addEventListener("click", ()=>openEntryModal("expense"));
+
 document.getElementById("modalCancel").addEventListener("click", ()=>{
   document.getElementById("modalOverlay").classList.remove("show");
 });
 document.getElementById("modalSubmit").addEventListener("click", async ()=>{
   const amount = parseInt(document.getElementById("modalAmount").value, 10);
   const memo = document.getElementById("modalMemo").value || "";
+  const dateVal = document.getElementById("modalDate").value || todayStr();
+  const ts = new Date(dateVal + "T12:00:00").getTime();
   if(!amount || amount<=0){ alert("금액을 입력해주세요."); return; }
-  if(!selectedCat){ alert("카테고리를 선택해주세요."); return; }
-  await pushEntry({type:"expense", amount, category:selectedCat, memo, person: myPerson, ts: Date.now()});
+  if(modalMode==='expense' && !selectedCat){ alert("카테고리를 선택해주세요."); return; }
+
+  const entry = modalMode==='income'
+    ? {type:"income", amount, memo, person: myPerson, ts}
+    : {type:"expense", amount, category:selectedCat, memo, person: myPerson, ts};
+
+  await pushEntry(entry);
   document.getElementById("modalOverlay").classList.remove("show");
-  showToast(`📦 지출 -${fmt(amount)} 기록됨`);
+  showToast(modalMode==='income' ? `💰 수입 +${fmt(amount)} 기록됨` : `📦 지출 -${fmt(amount)} 기록됨`);
   await loadEntries();
+});
+
+// ---- Settings modal ----
+document.getElementById("settingsBtn").addEventListener("click", ()=>{
+  document.getElementById("setLongLabel").value = settings.longLabel;
+  document.getElementById("setLongGoal").value = settings.longGoal;
+  document.getElementById("setShortLabel").value = settings.shortLabel;
+  document.getElementById("setShortGoal").value = settings.shortGoal;
+  document.getElementById("setBudget").value = settings.monthlyBudget || "";
+  document.getElementById("settingsOverlay").classList.add("show");
+});
+document.getElementById("settingsCancel").addEventListener("click", ()=>{
+  document.getElementById("settingsOverlay").classList.remove("show");
+});
+document.getElementById("settingsSubmit").addEventListener("click", async ()=>{
+  const newSettings = {
+    longLabel: document.getElementById("setLongLabel").value || "장기 목표",
+    longGoal: parseInt(document.getElementById("setLongGoal").value,10) || 3000000000,
+    shortLabel: document.getElementById("setShortLabel").value || "현실 목표",
+    shortGoal: parseInt(document.getElementById("setShortGoal").value,10) || 10000000,
+    monthlyBudget: parseInt(document.getElementById("setBudget").value,10) || 0
+  };
+  await saveSettings(newSettings);
+  document.getElementById("settingsOverlay").classList.remove("show");
+  showToast("⚙️ 목표가 저장됐어요");
+  renderAll();
 });
 
 // ---- Person picker ----
@@ -488,6 +641,7 @@ document.getElementById("refreshBtn").addEventListener("click", loadEntries);
 
 (async function init(){
   checkPerson();
+  await loadSettings();
   await loadEntries();
 })();
 </script>
