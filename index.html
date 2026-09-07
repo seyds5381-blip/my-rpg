@@ -40,24 +40,39 @@
     font-family:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     min-height:100vh;
     padding:10px 8px 90px;
+    position:relative;
+  }
+  body::before{
+    content:"";
+    position:fixed;inset:0;
+    pointer-events:none;
+    background:repeating-linear-gradient(
+      0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px,
+      transparent 1px, transparent 3px
+    );
+    opacity:0.35;
+    z-index:2000;
   }
   .wrap{max-width:480px;margin:0 auto;}
 
-  /* ===== Frame utility ===== */
+  /* ===== Frame utility (90s beveled) ===== */
   .frame{
     background:linear-gradient(180deg, var(--wood-light), var(--wood));
-    border:2px solid var(--gold-dim);
-    border-radius:4px;
+    border:3px solid var(--gold-dim);
+    border-radius:2px;
     position:relative;
     padding:12px;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.5);
+    box-shadow:
+      inset -3px -3px 0 rgba(0,0,0,0.55),
+      inset 3px 3px 0 rgba(255,255,255,0.10),
+      0 3px 10px rgba(0,0,0,0.6);
   }
   .frame::before,.frame::after,
   .frame .corner-tl,.frame .corner-tr,.frame .corner-bl,.frame .corner-br{
     content:"";
     position:absolute;
-    width:9px;height:9px;
-    border:2px solid var(--gold);
+    width:12px;height:12px;
+    border:3px solid var(--gold-bright);
   }
   .corner-tl{top:-2px;left:-2px;border-right:none;border-bottom:none;}
   .corner-tr{top:-2px;right:-2px;border-left:none;border-bottom:none;}
@@ -119,14 +134,23 @@
     flex-shrink:0;
   }
   .bar-outer{
-    flex:1;height:11px;
+    flex:1;height:12px;
     background:#0E0C0A;
-    border:1px solid rgba(0,0,0,0.6);
-    border-radius:2px;
+    border:2px solid rgba(0,0,0,0.7);
+    border-radius:1px;
     overflow:hidden;
     position:relative;
+    box-shadow:inset -1px -1px 0 rgba(255,255,255,0.06), inset 1px 1px 0 rgba(0,0,0,0.5);
   }
-  .bar-inner{height:100%;transition:width .4s ease;}
+  .bar-inner{height:100%;transition:width .4s ease; position:relative;}
+  .bar-inner::after{
+    content:"";
+    position:absolute;inset:0;
+    background:repeating-linear-gradient(
+      90deg, transparent 0px, transparent 7px,
+      rgba(0,0,0,0.45) 7px, rgba(0,0,0,0.45) 9px
+    );
+  }
   .bar-inner.hp{background:linear-gradient(180deg, var(--hp-bright), var(--hp));}
   .bar-inner.mp{background:linear-gradient(180deg, var(--mp-bright), var(--mp));}
   .bar-inner.exp{background:linear-gradient(180deg, var(--exp-bright), var(--exp));}
@@ -329,6 +353,122 @@
   }
 
   /* ===== Level up overlay ===== */
+  /* ===== Equip slots (status tab) ===== */
+  .equip-grid{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:6px;
+    margin:10px 0 12px;
+  }
+  .equip-slot{
+    aspect-ratio:1;
+    background:radial-gradient(circle at 35% 30%, #241b10, #0E0C0A);
+    border:2px solid var(--gold-dim);
+    border-radius:4px;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:19px;
+    position:relative;
+  }
+  .equip-slot .tag{
+    position:absolute;bottom:1px;
+    font-size:7.5px;color:var(--parchment-dim);
+    letter-spacing:0.5px;
+  }
+
+  /* ===== Item toast ===== */
+  #toastWrap{
+    position:fixed;top:14px;left:0;right:0;
+    display:flex;flex-direction:column;align-items:center;
+    gap:6px;z-index:1100;pointer-events:none;
+  }
+  .toast{
+    background:linear-gradient(180deg, #3B2E22, #1c150d);
+    border:1px solid var(--gold);
+    color:var(--gold-bright);
+    font-size:12px;
+    padding:8px 16px;
+    border-radius:4px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.6);
+    opacity:0;
+    transform:translateY(-10px);
+    transition:opacity .3s ease, transform .3s ease;
+    text-align:center;
+  }
+  .toast.show{opacity:1;transform:translateY(0);}
+  .toast b{color:#fff;}
+
+  /* ===== NPC dialogue ===== */
+  .mq-card{
+    border:1px solid var(--mp);
+    background:rgba(74,143,193,0.07);
+    border-radius:4px;
+    padding:11px;
+    margin-bottom:9px;
+    display:flex;gap:10px;align-items:center;
+    cursor:pointer;
+  }
+  .mq-card:last-child{margin-bottom:0;}
+  .mq-card.locked{opacity:0.4;}
+  .mq-icon{
+    width:42px;height:42px;border-radius:50%;
+    background:#0E0C0A;border:2px solid var(--mp-bright);
+    display:flex;align-items:center;justify-content:center;
+    font-size:20px;flex-shrink:0;
+  }
+  .mq-card.locked .mq-icon{border-color:var(--gold-dim);}
+  .mq-period{font-family:'SF Mono','Consolas',monospace;font-size:9.5px;color:var(--mp-bright);}
+  .mq-title{font-size:13.5px;font-weight:700;margin:2px 0;}
+  .mq-npc{font-size:10.5px;color:var(--parchment-dim);}
+  .mq-arrow{margin-left:auto;color:var(--gold-dim);font-size:16px;}
+
+  #npcOverlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.75);
+    display:flex;align-items:flex-end;justify-content:center;
+    z-index:1200;
+    opacity:0;pointer-events:none;
+    transition:opacity .25s ease;
+    padding:0 8px 8px;
+  }
+  #npcOverlay.show{opacity:1;pointer-events:auto;}
+  .npc-box{
+    width:100%;max-width:460px;
+    background:linear-gradient(180deg, #3B2E22, #1c150d);
+    border:2px solid var(--gold);
+    border-radius:6px;
+    padding:14px;
+    box-shadow:0 -6px 24px rgba(0,0,0,0.7);
+    position:relative;
+  }
+  .npc-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+  .npc-portrait{
+    width:48px;height:48px;border-radius:6px;
+    background:#0E0C0A;border:2px solid var(--gold);
+    display:flex;align-items:center;justify-content:center;
+    font-size:24px;flex-shrink:0;
+  }
+  .npc-name{font-size:14.5px;font-weight:700;color:var(--gold-bright);}
+  .npc-role{font-size:10.5px;color:var(--mp-bright);}
+  .npc-text{
+    font-size:13px;line-height:1.7;color:var(--parchment);
+    min-height:90px;
+    padding:4px 2px 10px;
+    white-space:pre-line;
+  }
+  .npc-footer{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+  .npc-page{font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--parchment-dim);}
+  .npc-btns{display:flex;gap:6px;}
+  .npc-btn{
+    background:linear-gradient(180deg, var(--gold), var(--gold-dim));
+    border:1px solid #6b5a2e;
+    color:#1a140d;font-weight:700;font-size:12px;
+    padding:7px 16px;border-radius:3px;cursor:pointer;
+    font-family:Georgia,"Noto Serif KR",serif;
+  }
+  .npc-btn.ghost{
+    background:transparent;border:1px solid var(--parchment-dim);color:var(--parchment-dim);font-weight:400;
+  }
+
   #levelupOverlay{
     position:fixed;inset:0;
     display:flex;align-items:center;justify-content:center;
@@ -398,12 +538,13 @@
   </div>
 
   <!-- Tabs -->
-  <div class="tabs">
-    <button class="tab-btn active" data-tab="status">상태창</button>
-    <button class="tab-btn" data-tab="quest">퀘스트북</button>
-    <button class="tab-btn" data-tab="inventory">인벤토리</button>
-    <button class="tab-btn" data-tab="skill">스킬창</button>
-    <button class="tab-btn" data-tab="boss">보스전</button>
+  <div class="tabs" style="overflow-x:auto; flex-wrap:nowrap;">
+    <button class="tab-btn active" data-tab="status" style="flex:0 0 auto; padding:8px 10px;">상태창</button>
+    <button class="tab-btn" data-tab="quest" style="flex:0 0 auto; padding:8px 10px;">퀘스트북</button>
+    <button class="tab-btn" data-tab="inventory" style="flex:0 0 auto; padding:8px 10px;">인벤토리</button>
+    <button class="tab-btn" data-tab="skill" style="flex:0 0 auto; padding:8px 10px;">마법서</button>
+    <button class="tab-btn" data-tab="mainquest" style="flex:0 0 auto; padding:8px 10px;">메인퀘스트</button>
+    <button class="tab-btn" data-tab="boss" style="flex:0 0 auto; padding:8px 10px;">보스전</button>
   </div>
 
   <div class="frame">
@@ -411,6 +552,12 @@
     <div class="frame-title" id="panelTitle">상 태 창</div>
 
     <div class="panel-body" id="statusPanel">
+      <div class="equip-grid">
+        <div class="equip-slot">🎬<span class="tag">무기</span></div>
+        <div class="equip-slot">🛡️<span class="tag">방어구</span></div>
+        <div class="equip-slot">🤝<span class="tag">장신구</span></div>
+        <div class="equip-slot">🎖️<span class="tag">칭호</span></div>
+      </div>
       <div class="stat-line"><span>이름</span><span class="v">유대승</span></div>
       <div class="stat-line"><span>전직</span><span class="v">승무원(12년) → 크리에이터 창업가</span></div>
       <div class="stat-line"><span>재무력</span><span class="v" id="s-fin">0</span></div>
@@ -439,18 +586,24 @@
     </div>
 
     <div class="panel-body hidden" id="skillPanel">
+      <div style="font-size:11px;color:var(--parchment-dim);margin-bottom:10px;">📖 법사의 마법서 — 레벨이 오르면 새 주문이 자동으로 각성합니다.</div>
       <div class="skill-track">
-        <div class="skill-track-title">TRACK A — 커머스 계열</div>
+        <div class="skill-track-title">🔥 화염 계열 — 실행의 마법 (커머스)</div>
         <div id="skillA"></div>
       </div>
       <div class="skill-track">
-        <div class="skill-track-title">TRACK B — 개인 브랜드 계열</div>
+        <div class="skill-track-title">✨ 정신 계열 — 확장의 마법 (개인 브랜드)</div>
         <div id="skillB"></div>
       </div>
     </div>
 
     <div class="panel-body hidden" id="bossPanel">
       <div id="bossBox"></div>
+    </div>
+
+    <div class="panel-body hidden" id="mainquestPanel">
+      <div style="font-size:11px;color:var(--parchment-dim);margin-bottom:10px;">순자산 30억까지의 여정 — NPC를 눌러 구체적인 방법을 들어보세요.</div>
+      <div id="mainquestBox"></div>
     </div>
   </div>
 
@@ -459,6 +612,28 @@
 
   <button class="reset-btn" id="resetBtn">모험 기록 초기화</button>
 
+</div>
+
+<div id="toastWrap"></div>
+
+<div id="npcOverlay">
+  <div class="npc-box">
+    <div class="npc-head">
+      <div class="npc-portrait" id="npcPortrait">👴</div>
+      <div>
+        <div class="npc-name" id="npcName">NPC</div>
+        <div class="npc-role" id="npcRole">역할</div>
+      </div>
+    </div>
+    <div class="npc-text" id="npcText"></div>
+    <div class="npc-footer">
+      <div class="npc-page" id="npcPage">1 / 1</div>
+      <div class="npc-btns">
+        <button class="npc-btn ghost" id="npcCloseBtn">닫기</button>
+        <button class="npc-btn" id="npcNextBtn">다음</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div id="levelupOverlay">
@@ -503,18 +678,60 @@ const INVENTORY = [
   {id:"i8", icon:"👨‍👩‍👧", name:"가족의 축복", grade:"legendary", stack:1, desc:"아내와 16개월 아기. 모든 퀘스트 수행의 진짜 이유. 사기 저하 면역."},
 ];
 const SKILLS_A = [
-  {id:"sa1", icon:"💡", name:"콘텐츠 기획", req:1},
-  {id:"sa2", icon:"📞", name:"브랜드 컨택", req:3},
-  {id:"sa3", icon:"🛒", name:"공구 세팅", req:5},
-  {id:"sa4", icon:"💹", name:"매출 전환", req:8},
-  {id:"sa5", icon:"🏭", name:"자체 브랜드화", req:15},
+  {id:"sa1", icon:"🔥", name:"파이어볼 — 콘텐츠 기획", req:1, mp:5},
+  {id:"sa2", icon:"⚡", name:"라이트닝 — 브랜드 컨택", req:3, mp:10},
+  {id:"sa3", icon:"💥", name:"메테오 — 공구 세팅", req:5, mp:20},
+  {id:"sa4", icon:"🌋", name:"인페르노 — 매출 전환", req:8, mp:35},
+  {id:"sa5", icon:"👑", name:"아마겟돈 — 자체 브랜드화", req:15, mp:60},
 ];
 const SKILLS_B = [
-  {id:"sb1", icon:"🔍", name:"트렌드 리서치", req:1},
-  {id:"sb2", icon:"🎞️", name:"릴스 제작", req:3},
-  {id:"sb3", icon:"💬", name:"스레드 운영", req:6},
-  {id:"sb4", icon:"📘", name:"전자책 제작", req:10},
-  {id:"sb5", icon:"🎓", name:"그룹 코칭", req:15},
+  {id:"sb1", icon:"🔍", name:"디텍트 매직 — 트렌드 리서치", req:1, mp:5},
+  {id:"sb2", icon:"🎞️", name:"일루전 — 릴스 제작", req:3, mp:10},
+  {id:"sb3", icon:"💬", name:"텔레파시 — 스레드 운영", req:6, mp:15},
+  {id:"sb4", icon:"📘", name:"메모라이즈 — 전자책 제작", req:10, mp:25},
+  {id:"sb5", icon:"🎓", name:"마스터리 오라 — 그룹 코칭", req:15, mp:40},
+];
+const MAIN_QUESTS = [
+  {
+    id:"mq1", period:"1~2년차", title:"1장 — 생존과 증명의 대지",
+    npc:"상인 길드장 박대표", npcIcon:"🧔",
+    unlockLevel:1,
+    pages:[
+      "어서 오게, 모험가여. 자네가 순자산 30억이라는 전설의 성배를 찾고 있다 들었네.\n\n먼저 명심하게. 지금 자네의 던전은 '생존'이야. 매달 300만원의 갭을 메우지 못하면, 그 어떤 원대한 계획도 시작조차 못 하네.",
+      "구체적인 방법을 알려주지.\n\n1) 알바나 프리랜서로 확실한 현금줄부터 하나 확보하게.\n2) 동시에 육아 계정을 재가동해서 원래 하던 공구를 다시 돌리게. 브랜드 관계는 아직 살아있으니, 새로 시작하는 것보다 훨씬 빠를 걸세.\n3) 이 두 개를 같이 돌리면 1~2개월 안에 갭이 메워질 걸세.",
+      "이 시기의 진짜 목표는 큰돈을 버는 게 아니야. '내가 다시 돈을 벌 수 있다'는 걸 스스로에게 증명하는 거지.\n\n증명이 끝나면 다음 장으로 넘어오게. 대장장이 이씨가 자네를 기다리고 있을 걸세."
+    ]
+  },
+  {
+    id:"mq2", period:"3~5년차", title:"2장 — 브랜드 대장간",
+    npc:"브랜드 대장장이 이씨", npcIcon:"🧑‍🏭",
+    unlockLevel:10,
+    pages:[
+      "왔군. 자네가 증명을 마쳤다는 소식은 들었네. 이제 진짜 무기를 만들어야 할 때야.\n\n지금까지는 남의 브랜드를 팔아주는 '용병'이었다면, 이제는 자네만의 무기, 즉 자체 브랜드를 벼려야 하네.",
+      "대장간의 비법을 알려주지.\n\n1) 공구로 팔던 카테고리 중 가장 반응 좋았던 것 하나를 골라 직접 소싱을 시작하게.\n2) 처음엔 재고 부담 없는 위탁이나 소량 사입으로 시작하고, 마진 구조를 스스로 통제할 수 있게 만들게.\n3) 이 시점부터 편집·운영 일부를 사람에게 맡기게. 자네의 시간이 매출의 한계가 되어선 안 되네.",
+      "무기가 완성되면, 매출이 자네의 노동 시간과 분리되기 시작할 걸세. 그게 바로 '사업체'와 '노동'의 차이야.\n\n이 무기를 완성하면 도사 미르를 찾아가게. 이제 흩어진 재물을 한데 모으는 법을 배울 차례네."
+    ]
+  },
+  {
+    id:"mq3", period:"5~10년차", title:"3장 — 현자의 재물 분산술",
+    npc:"투자 현자 미르 도사", npcIcon:"🧙",
+    unlockLevel:20,
+    pages:[
+      "허허, 무기까지 완성했다고? 대단하군. 하지만 재물을 한 바구니에만 담아두면 언젠가 그 바구니가 뒤집히는 날 전부를 잃게 되네.",
+      "현자의 가르침을 새기게.\n\n1) 사업에서 나오는 소득의 일부를 꾸준히 부동산이나 투자자산으로 옮기게.\n2) 생활 수준은 소득이 늘어도 천천히 올리게. 번 만큼 재투자하는 습관이 없으면, 아무리 벌어도 재물은 쌓이지 않네.\n3) 사업 지분의 가치 자체도 자산이라는 걸 잊지 말게. 팀이 자네 없이도 돌아가기 시작하면, 그 사업 자체가 팔릴 수 있는 자산이 되네.",
+      "이 시기를 잘 넘기면, 소득과 자산이 따로 놀지 않고 함께 불어나는 걸 보게 될 걸세.\n\n마지막 관문은 왕실 재무관 최상궁이 지키고 있네. 그곳에서 자네의 여정이 완성될 걸세."
+    ]
+  },
+  {
+    id:"mq4", period:"10~15년차", title:"4장 — 재무관의 최종 시험",
+    npc:"왕실 재무관 최상궁", npcIcon:"👑",
+    unlockLevel:30,
+    pages:[
+      "먼 길을 왔군요. 사업 지분, 부동산, 투자자산... 이 세 가지가 고르게 쌓였다면, 자네는 이미 전설의 문턱에 서 있는 것입니다.",
+      "마지막으로 이르노니.\n\n순자산 30억은 목적지가 아니라 하나의 관문일 뿐입니다. 그 다음엔 반드시 스스로에게 묻게 될 겁니다 — '이제 충분한가?'\n\n결핍에서 시작한 여정은 강력한 연료지만, 그 결핍이 마음속에서 해소되지 않으면 재물이 아무리 쌓여도 허기는 가시지 않아요.",
+      "그러니 이 관문을 넘을 때쯤엔, 재물 그 자체가 아니라 재물이 지켜주는 것들 — 가족과 함께 보내는 시간, 선택할 수 있는 자유 — 을 보게 되길 바랍니다.\n\n축하합니다, 모험가여. 전설은 이제 당신의 것입니다."
+    ]
+  },
 ];
 
 let state = { xp:0, checked:{}, log:[] };
@@ -651,13 +868,78 @@ function renderSkills(){
           <div class="skill-icon">${s.icon}</div>
           <div class="skill-info">
             <div class="skill-name">${s.name}</div>
-            <div class="skill-req">${unlocked ? '습득 완료' : `Lv.${s.req} 필요`}</div>
+            <div class="skill-req">${unlocked ? `습득 완료 · MP ${s.mp}` : `Lv.${s.req} 필요 · MP ${s.mp}`}</div>
           </div>
         </div>`;
     }).join("");
   }
   document.getElementById("skillA").innerHTML = block(SKILLS_A);
   document.getElementById("skillB").innerHTML = block(SKILLS_B);
+}
+
+function renderMainQuests(){
+  const lv = levelForXp(state.xp);
+  const box = document.getElementById("mainquestBox");
+  box.innerHTML = MAIN_QUESTS.map(mq=>{
+    const unlocked = lv >= mq.unlockLevel;
+    return `
+      <div class="mq-card ${unlocked?'':'locked'}" data-id="${mq.id}">
+        <div class="mq-icon">${unlocked ? mq.npcIcon : '🔒'}</div>
+        <div>
+          <div class="mq-period">${mq.period}</div>
+          <div class="mq-title">${mq.title}</div>
+          <div class="mq-npc">${unlocked ? mq.npc : `Lv.${mq.unlockLevel} 필요`}</div>
+        </div>
+        <div class="mq-arrow">${unlocked ? '›' : ''}</div>
+      </div>`;
+  }).join("");
+  box.querySelectorAll(".mq-card").forEach(card=>{
+    if(!card.classList.contains("locked")){
+      card.addEventListener("click", ()=>openNpc(card.getAttribute("data-id")));
+    }
+  });
+}
+
+let npcState = {id:null, page:0};
+function openNpc(id){
+  const mq = MAIN_QUESTS.find(m=>m.id===id);
+  npcState = {id, page:0};
+  document.getElementById("npcPortrait").textContent = mq.npcIcon;
+  document.getElementById("npcName").textContent = mq.npc;
+  document.getElementById("npcRole").textContent = mq.title;
+  renderNpcPage();
+  document.getElementById("npcOverlay").classList.add("show");
+}
+function renderNpcPage(){
+  const mq = MAIN_QUESTS.find(m=>m.id===npcState.id);
+  document.getElementById("npcText").textContent = mq.pages[npcState.page];
+  document.getElementById("npcPage").textContent = `${npcState.page+1} / ${mq.pages.length}`;
+  document.getElementById("npcNextBtn").textContent = (npcState.page >= mq.pages.length-1) ? "닫기" : "다음";
+}
+document.getElementById("npcNextBtn").addEventListener("click", ()=>{
+  const mq = MAIN_QUESTS.find(m=>m.id===npcState.id);
+  if(npcState.page < mq.pages.length-1){
+    npcState.page++;
+    renderNpcPage();
+  }else{
+    document.getElementById("npcOverlay").classList.remove("show");
+  }
+});
+document.getElementById("npcCloseBtn").addEventListener("click", ()=>{
+  document.getElementById("npcOverlay").classList.remove("show");
+});
+
+function showToast(text){
+  const wrap = document.getElementById("toastWrap");
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = text;
+  wrap.appendChild(el);
+  requestAnimationFrame(()=>el.classList.add("show"));
+  setTimeout(()=>{
+    el.classList.remove("show");
+    setTimeout(()=>el.remove(), 350);
+  }, 2200);
 }
 
 function renderAll(){
@@ -667,6 +949,7 @@ function renderAll(){
   renderBosses();
   renderInventory();
   renderSkills();
+  renderMainQuests();
   renderLog();
 }
 
@@ -680,7 +963,10 @@ async function onQuestToggle(e){
   state.checked[id] = nowChecked;
   state.xp = Math.max(0, state.xp + (nowChecked? xp : -xp));
 
-  if(nowChecked) addLog(`퀘스트 완료: <b>${name}</b> (+${xp} EXP)`, '');
+  if(nowChecked){
+    addLog(`퀘스트 완료: <b>${name}</b> (+${xp} EXP)`, '');
+    showToast(`✦ 아이템 획득: <b>${name}</b>`);
+  }
 
   const afterLv = levelForXp(state.xp);
   renderAll();
@@ -697,6 +983,7 @@ async function onBossClear(e){
   state.checked[id] = true;
   state.xp += xp;
   addLog(`보스 토벌 성공: <b>${name}</b> (+${xp} EXP)`, 'boss');
+  showToast(`⚔️ 보스 토벌! <b>${name}</b> 클리어`);
 
   const afterLv = levelForXp(state.xp);
   renderAll();
@@ -715,14 +1002,14 @@ function triggerLevelUp(lv){
 }
 
 // Tab switching
-const TAB_TITLES = {status:"상 태 창", quest:"퀘 스 트 북", inventory:"인 벤 토 리", skill:"스 킬 창", boss:"보 스 전"};
+const TAB_TITLES = {status:"상 태 창", quest:"퀘 스 트 북", inventory:"인 벤 토 리", skill:"마 법 서", mainquest:"메 인 퀘 스 트", boss:"보 스 전"};
 document.querySelectorAll(".tab-btn").forEach(btn=>{
   btn.addEventListener("click", ()=>{
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     const tab = btn.getAttribute("data-tab");
     document.getElementById("panelTitle").textContent = TAB_TITLES[tab];
-    ["status","quest","inventory","skill","boss"].forEach(t=>{
+    ["status","quest","inventory","skill","mainquest","boss"].forEach(t=>{
       document.getElementById(t+"Panel").classList.toggle("hidden", t!==tab);
     });
   });
