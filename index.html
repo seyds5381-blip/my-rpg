@@ -376,6 +376,42 @@
   }
 
   /* ===== Item toast ===== */
+  /* ===== Income tracker ===== */
+  .gold-btn{
+    display:block;
+    width:100%;
+    margin-top:10px;
+    background:linear-gradient(180deg, var(--gold-bright), var(--gold-dim));
+    border:1px solid #6b5a2e;
+    color:#1a140d;font-weight:700;font-size:12.5px;
+    padding:9px;border-radius:4px;cursor:pointer;
+    font-family:Georgia,"Noto Serif KR",serif;
+    letter-spacing:0.5px;
+  }
+  .wealth-box{
+    margin-top:10px;
+    padding:10px;
+    background:rgba(0,0,0,0.3);
+    border:1px solid var(--gold-dim);
+    border-radius:3px;
+  }
+  .wealth-row{display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;}
+  .wealth-row .v{font-family:'SF Mono','Consolas',monospace;color:var(--gold-bright);}
+  .wealth-bar-outer{
+    height:14px;background:#0E0C0A;border:2px solid rgba(0,0,0,0.7);border-radius:1px;overflow:hidden;
+    box-shadow:inset -1px -1px 0 rgba(255,255,255,0.06), inset 1px 1px 0 rgba(0,0,0,0.5);
+  }
+  .wealth-bar-inner{
+    height:100%;
+    background:linear-gradient(180deg, var(--gold-bright), var(--exp));
+    position:relative;
+  }
+  .wealth-bar-inner::after{
+    content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(90deg, transparent 0px, transparent 7px, rgba(0,0,0,0.4) 7px, rgba(0,0,0,0.4) 9px);
+  }
+  .wealth-pct{text-align:center;font-family:'SF Mono','Consolas',monospace;font-size:10px;color:var(--parchment-dim);margin-top:4px;}
+
   #toastWrap{
     position:fixed;top:14px;left:0;right:0;
     display:flex;flex-direction:column;align-items:center;
@@ -535,6 +571,7 @@
         </div>
       </div>
     </div>
+    <button class="gold-btn" id="incomeBtn">💰 수익 기록하기</button>
   </div>
 
   <!-- Tabs -->
@@ -567,6 +604,12 @@
       <div class="stat-line"><span>누적 클리어 퀘스트</span><span class="v" id="s-qcount">0</span></div>
       <div class="stat-line"><span>격파한 보스</span><span class="v" id="s-bcount">0 / 5</span></div>
       <div class="title-badge" id="titleBadge">칭호: 신입 모험가</div>
+      <div class="wealth-box">
+        <div class="wealth-row"><span>누적 실수익</span><span class="v" id="wealthAmount">0원</span></div>
+        <div class="wealth-row"><span>목표(순자산 30억)까지</span><span class="v" id="wealthTarget">30억원</span></div>
+        <div class="wealth-bar-outer"><div class="wealth-bar-inner" id="wealthBar" style="width:0%"></div></div>
+        <div class="wealth-pct" id="wealthPct">0.00%</div>
+      </div>
     </div>
 
     <div class="panel-body hidden" id="questPanel">
@@ -646,6 +689,7 @@
 
 <script>
 const STORAGE_KEY = "dark_startup_online_v1";
+const DB_URL = "https://yooco-f7785-default-rtdb.firebaseio.com";
 
 const DAILY = [
   {id:"d1", t:"트렌드 리서치 30분 (인스타·유튜브·틱톡)", xp:10},
@@ -734,7 +778,7 @@ const MAIN_QUESTS = [
   },
 ];
 
-let state = { xp:0, checked:{}, log:[] };
+let state = { xp:0, checked:{}, log:[], totalGold:0 };
 
 function levelForXp(xp){ return Math.max(1, Math.floor(Math.sqrt(xp/45)) + 1); }
 function xpForLevel(lv){ return Math.pow(lv-1,2)*45; }
@@ -752,7 +796,7 @@ async function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(raw){
       const parsed = JSON.parse(raw);
-      state = { xp: parsed.xp||0, checked: parsed.checked||{}, log: parsed.log||[] };
+      state = { xp: parsed.xp||0, checked: parsed.checked||{}, log: parsed.log||[], totalGold: parsed.totalGold||0 };
     }
   }catch(e){ console.error("불러오기 실패", e); }
 }
@@ -803,7 +847,67 @@ function renderHUD(){
   const bossCleared = BOSSES.filter(b => state.checked[b.id]).length;
   document.getElementById("s-bcount").textContent = `${bossCleared} / ${BOSSES.length}`;
   document.getElementById("titleBadge").textContent = `칭호: ${classTitle(lv)}`;
+
+  const GOAL = 3000000000; // 30억
+  const gold = kingdomNet; // 왕국 곳간(가계부)과 실시간 연동된 순자산
+  const wPct = Math.max(0, Math.min(100, (gold/GOAL)*100));
+  document.getElementById("wealthAmount").textContent = gold.toLocaleString('ko-KR')+"원";
+  document.getElementById("wealthBar").style.width = wPct+"%";
+  document.getElementById("wealthPct").textContent = wPct.toFixed(wPct<1?4:2)+"%";
 }
+
+let kingdomNet = 0;
+async function syncKingdomTreasury(){
+  try{
+    const res = await fetch(`${DB_URL}/ledger/entries.json`);
+    const data = await res.json();
+    let income = 0, expense = 0;
+    if(data){
+      for(const key in data){
+        const e = data[key];
+        if(e.type === 'income') income += e.amount;
+        else if(e.type === 'expense') expense += e.amount;
+      }
+    }
+    kingdomNet = income - expense;
+  }catch(e){
+    console.error("왕국 곳간 동기화 실패", e);
+  }
+  renderHUD();
+}
+
+async function recordIncome(){
+  const raw = prompt("이번에 번 금액을 입력하세요 (원 단위, 숫자만)\n예: 500000");
+  if(raw === null) return;
+  const amount = parseInt(raw.replace(/[^0-9]/g,''), 10);
+  if(!amount || amount <= 0){
+    alert("올바른 금액을 입력해주세요.");
+    return;
+  }
+  const xpGain = Math.max(1, Math.floor(amount/50000)); // 5만원 = 1XP
+  const beforeLv = levelForXp(state.xp);
+
+  try{
+    await fetch(`${DB_URL}/ledger/entries.json`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({type:"income", amount, memo:"RPG 앱에서 기록", person:"yoo", ts: Date.now()})
+    });
+  }catch(e){
+    console.error("곳간 기록 실패", e);
+  }
+
+  state.xp += xpGain;
+  addLog(`💰 수익 기록: <b>${amount.toLocaleString('ko-KR')}원</b> (+${xpGain} EXP)`, '');
+  showToast(`💰 골드 획득: <b>${amount.toLocaleString('ko-KR')}원</b>`);
+
+  const afterLv = levelForXp(state.xp);
+  renderAll();
+  if(afterLv > beforeLv) triggerLevelUp(afterLv);
+  await saveState();
+  await syncKingdomTreasury();
+}
+document.getElementById("incomeBtn").addEventListener("click", recordIncome);
 
 function renderQuests(list, containerId){
   const box = document.getElementById(containerId);
@@ -1037,6 +1141,7 @@ document.getElementById("resetBtn").addEventListener("click", async ()=>{
 (async function init(){
   await loadState();
   renderAll();
+  await syncKingdomTreasury();
 })();
 </script>
 </body>
