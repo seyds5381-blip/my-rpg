@@ -107,11 +107,19 @@
   .details-body{padding:12px 16px 16px;}
 
   .edit-row{
-    display:flex;align-items:center;gap:8px;padding:8px 0;
+    display:flex;align-items:center;gap:8px;padding:8px 8px;
     border-bottom:1px solid #F0F2F5;
     background:var(--card);
-    transition:box-shadow .15s ease, transform .15s ease;
+    border-radius:6px;
+    transition:box-shadow .15s ease, transform .15s ease, background .15s ease;
   }
+  .edit-row.variable{background:#FFF8E8;}
+  .type-toggle{
+    flex-shrink:0;font-size:10px;font-weight:700;padding:4px 7px;border-radius:10px;
+    border:1px solid transparent;cursor:pointer;white-space:nowrap;
+  }
+  .type-toggle.fixed{background:#EEF1F5;color:var(--text-dim);}
+  .type-toggle.variable{background:#FDECC8;color:#92650A;}
   .edit-row:last-child{border-bottom:none;}
   .edit-row.dragging{
     box-shadow:0 8px 20px rgba(16,24,40,0.18);
@@ -199,11 +207,17 @@
       <span>월 고정 수입</span>
       <div class="sum-input-wrap"><input class="sum-input" type="number" id="sumIncome"><span class="unit">만원</span></div>
     </div>
-    <div class="sum-row">
+
+    <div style="font-size:12px;font-weight:700;color:var(--blue);margin:10px 0 4px;">수익원 내역</div>
+    <div id="rows-incomeSources"></div>
+    <button class="add-btn" data-section="incomeSources">+ 수익원 추가</button>
+    <div class="subtotal-row"><span>수익원 합계</span><span id="subtotal-incomeSources">0만원</span></div>
+
+    <div class="sum-row" style="margin-top:14px;">
       <span>전체 지출 (공용+본인+아내)</span>
       <div class="sum-input-wrap"><input class="sum-input" type="number" id="sumExpense"><span class="unit">만원</span></div>
     </div>
-    <div class="note-box">아래 카테고리 소계와는 별도로 관리되는 요약값이에요. 실제 수입/지출 총액을 직접 입력·갱신하세요.</div>
+    <div class="note-box">위 두 숫자(월 고정 수입/전체 지출)는 직접 입력하는 요약값이고, 수익원 내역은 실제 어디서 얼마씩 버는지 참고용으로 따로 적어두는 목록이에요. 서로 자동 연동되진 않아요.</div>
   </div>
 
   <div class="card">
@@ -294,6 +308,10 @@ const INFO_PATH = "household_info_v3";
 const DEFAULTS = {
   summary: { income: 200, expense: 355, assets: 7500, liabilities: 6430 },
   sections: {
+    incomeSources: [
+      {label:"알바", note:"예정", amount:100},
+      {label:"인스타 수익", note:"변동성 있음", amount:100},
+    ],
     shared: [
       {label:"집값 대출 (월 상환)", note:"신한 25일", amount:40},
       {label:"자동차 렌트비", note:"", amount:69},
@@ -301,7 +319,7 @@ const DEFAULTS = {
       {label:"인터넷", note:"금액 확인 필요", amount:0},
       {label:"정수기", note:"~12월까지 반값", amount:3.89},
       {label:"냉장고 할부", note:"삼성카드 신한 25일", amount:9.5},
-      {label:"생활비", note:"지역화폐+쏠 체크카드", amount:30},
+      {label:"생활비", note:"지역화폐+쏠 체크카드", amount:30, type:"variable"},
       {label:"지후(아기) 보험", note:"현대해상 신한 25일", amount:6.6},
       {label:"월 가족행사비", note:"", amount:45},
       {label:"경조사 예비", note:"", amount:12.5},
@@ -424,20 +442,29 @@ function renderSummary(){
   });
 });
 
+const TYPE_TOGGLE_SECTIONS = ["shared","mine","wife"];
+
 function renderSection(sectionId){
   const box = document.getElementById("rows-"+sectionId);
   const rows = state.sections[sectionId];
-  box.innerHTML = rows.map((row, idx)=>`
-    <div class="edit-row" data-idx="${idx}">
+  const showType = TYPE_TOGGLE_SECTIONS.includes(sectionId);
+  box.innerHTML = rows.map((row, idx)=>{
+    const type = row.type || "fixed";
+    const typeBtn = showType
+      ? `<button class="type-toggle ${type}" data-action="type">${type==='variable'?'변동':'고정'}</button>`
+      : "";
+    return `
+    <div class="edit-row ${showType && type==='variable' ? 'variable':''}" data-idx="${idx}">
       <div class="drag-handle" data-role="handle">⠿</div>
       <div class="f-col">
         <input class="f-label" data-field="label" value="${escapeHtml(row.label)}" placeholder="항목명">
         <input class="f-note" data-field="note" value="${escapeHtml(row.note||'')}" placeholder="메모">
       </div>
       <input class="f-amount" type="number" data-field="amount" value="${row.amount}">
+      ${typeBtn}
       <button class="del-btn" data-action="del">×</button>
     </div>
-  `).join("");
+  `;}).join("");
 
   box.querySelectorAll(".edit-row").forEach(rowEl=>{
     const idx = parseInt(rowEl.getAttribute("data-idx"),10);
@@ -451,6 +478,15 @@ function renderSection(sectionId){
         scheduleSave();
       });
     });
+    const typeBtn = rowEl.querySelector('[data-action="type"]');
+    if(typeBtn){
+      typeBtn.addEventListener("click", ()=>{
+        const cur = state.sections[sectionId][idx].type || "fixed";
+        state.sections[sectionId][idx].type = cur === "fixed" ? "variable" : "fixed";
+        renderSection(sectionId);
+        scheduleSave();
+      });
+    }
     rowEl.querySelector(".del-btn").addEventListener("click", ()=>{
       state.sections[sectionId].splice(idx,1);
       renderSection(sectionId);
@@ -555,7 +591,7 @@ document.querySelectorAll(".add-btn").forEach(btn=>{
 
 function renderAll(){
   renderSummary();
-  ["shared","mine","mineLoans","wife","wifeLoans","stocks"].forEach(id=>{
+  ["incomeSources","shared","mine","mineLoans","wife","wifeLoans","stocks"].forEach(id=>{
     renderSection(id);
     renderSubtotal(id);
   });
