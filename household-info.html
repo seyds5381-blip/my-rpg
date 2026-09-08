@@ -201,11 +201,11 @@
     <h2>이번 달 한눈에</h2>
     <div class="big-num" id="netFlowBox">
       <div class="n" id="netFlowNum">-</div>
-      <div class="l">월 순현금흐름 (수입 − 지출)</div>
+      <div class="l">월 순현금흐름 (수입 − 지출, 자동계산)</div>
     </div>
     <div class="sum-row">
-      <span>월 고정 수입</span>
-      <div class="sum-input-wrap"><input class="sum-input" type="number" id="sumIncome"><span class="unit">만원</span></div>
+      <span>월 고정 수입 <span style="font-size:10px;color:var(--text-dim);font-weight:400;">(수익원 합계)</span></span>
+      <span id="sumIncomeDisplay" style="font-weight:700;color:var(--navy)">0만원</span>
     </div>
 
     <div style="font-size:12px;font-weight:700;color:var(--blue);margin:10px 0 4px;">수익원 내역</div>
@@ -214,10 +214,10 @@
     <div class="subtotal-row"><span>수익원 합계</span><span id="subtotal-incomeSources">0만원</span></div>
 
     <div class="sum-row" style="margin-top:14px;">
-      <span>전체 지출 (공용+본인+아내)</span>
-      <div class="sum-input-wrap"><input class="sum-input" type="number" id="sumExpense"><span class="unit">만원</span></div>
+      <span>전체 지출 <span style="font-size:10px;color:var(--text-dim);font-weight:400;">(모든 카테고리 합산)</span></span>
+      <span id="sumExpenseDisplay" style="font-weight:700;color:var(--navy)">0만원</span>
     </div>
-    <div class="note-box">위 두 숫자(월 고정 수입/전체 지출)는 직접 입력하는 요약값이고, 수익원 내역은 실제 어디서 얼마씩 버는지 참고용으로 따로 적어두는 목록이에요. 서로 자동 연동되진 않아요.</div>
+    <div class="note-box">수입은 "수익원 내역" 합계, 지출은 공용·본인·본인대출·강지·강지대출 소계를 전부 더한 값으로 자동 계산돼요. 직접 입력할 필요 없어요.</div>
   </div>
 
   <div class="card">
@@ -289,11 +289,11 @@
 
   <!-- 자산 -->
   <details>
-    <summary><span>주식 자산</span><span class="chev">▾</span></summary>
+    <summary><span>공용 현재자산</span><span class="chev">▾</span></summary>
     <div class="details-body">
       <div id="rows-stocks"></div>
       <button class="add-btn" data-section="stocks">+ 항목 추가</button>
-      <div class="subtotal-row"><span>주식 평가액 소계</span><span id="subtotal-stocks">0만원</span></div>
+      <div class="subtotal-row"><span>공용 자산 소계</span><span id="subtotal-stocks">0만원</span></div>
     </div>
   </details>
 
@@ -410,6 +410,7 @@ async function saveState(){
 }
 
 function scheduleSave(){
+  renderSummary();
   clearTimeout(saveTimer);
   saveTimer = setTimeout(saveState, 600);
 }
@@ -419,13 +420,22 @@ function fmt(n){
   return v.toLocaleString('ko-KR')+"만원";
 }
 
+function sectionSum(sectionId){
+  const rows = state.sections[sectionId] || [];
+  return rows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+}
+
 function renderSummary(){
-  document.getElementById("sumIncome").value = state.summary.income;
-  document.getElementById("sumExpense").value = state.summary.expense;
+  const income = sectionSum("incomeSources");
+  const expense = ["shared","mine","mineLoans","wife","wifeLoans"]
+    .reduce((s,id)=>s+sectionSum(id), 0);
+
+  document.getElementById("sumIncomeDisplay").textContent = fmt(income);
+  document.getElementById("sumExpenseDisplay").textContent = fmt(expense);
   document.getElementById("sumAssets").value = state.summary.assets;
   document.getElementById("sumLiab").value = state.summary.liabilities;
 
-  const net = (state.summary.income||0) - (state.summary.expense||0);
+  const net = income - expense;
   const box = document.getElementById("netFlowBox");
   box.className = "big-num " + (net < 0 ? "negative" : "positive");
   document.getElementById("netFlowNum").textContent = (net>=0?"+":"") + fmt(net);
@@ -433,9 +443,9 @@ function renderSummary(){
   document.getElementById("netWorthNum").textContent = fmt((state.summary.assets||0) - (state.summary.liabilities||0));
 }
 
-["sumIncome","sumExpense","sumAssets","sumLiab"].forEach(id=>{
+["sumAssets","sumLiab"].forEach(id=>{
   document.getElementById(id).addEventListener("input", (e)=>{
-    const key = {sumIncome:"income", sumExpense:"expense", sumAssets:"assets", sumLiab:"liabilities"}[id];
+    const key = {sumAssets:"assets", sumLiab:"liabilities"}[id];
     state.summary[key] = parseFloat(e.target.value) || 0;
     renderSummary();
     scheduleSave();
