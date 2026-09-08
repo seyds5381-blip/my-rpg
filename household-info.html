@@ -109,8 +109,24 @@
   .edit-row{
     display:flex;align-items:center;gap:8px;padding:8px 0;
     border-bottom:1px solid #F0F2F5;
+    background:var(--card);
+    transition:box-shadow .15s ease, transform .15s ease;
   }
   .edit-row:last-child{border-bottom:none;}
+  .edit-row.dragging{
+    box-shadow:0 8px 20px rgba(16,24,40,0.18);
+    transform:scale(1.02);
+    border-radius:8px;
+    position:relative;
+    z-index:10;
+    opacity:0.96;
+  }
+  .drag-handle{
+    flex-shrink:0;width:22px;height:32px;display:flex;align-items:center;justify-content:center;
+    color:#C1C7D0;font-size:16px;cursor:grab;touch-action:none;letter-spacing:-2px;
+    user-select:none;
+  }
+  .drag-handle:active{color:var(--blue);}
   .f-label, .f-note{
     background:transparent;border:none;
     color:var(--text);font-family:inherit;font-size:13.5px;padding:3px 2px;width:100%;
@@ -257,27 +273,13 @@
     </div>
   </details>
 
-  <!-- 출산육아지원금 -->
-  <details>
-    <summary><span>출산·육아 지원금 체크리스트</span><span class="chev">▾</span></summary>
-    <div class="details-body">
-      <div id="checklistBox"></div>
-    </div>
-  </details>
-
   <!-- 자산 -->
   <details>
-    <summary><span>주식 · 자동차 자산</span><span class="chev">▾</span></summary>
+    <summary><span>주식 자산</span><span class="chev">▾</span></summary>
     <div class="details-body">
-      <div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;">주식</div>
       <div id="rows-stocks"></div>
       <button class="add-btn" data-section="stocks">+ 항목 추가</button>
       <div class="subtotal-row"><span>주식 평가액 소계</span><span id="subtotal-stocks">0만원</span></div>
-
-      <div style="font-size:12px;font-weight:700;color:var(--blue);margin:16px 0 6px;">자동차</div>
-      <div id="rows-car"></div>
-      <button class="add-btn" data-section="car">+ 항목 추가</button>
-      <div class="subtotal-row"><span>자동차 관련 소계</span><span id="subtotal-car">0만원</span></div>
     </div>
   </details>
 
@@ -339,38 +341,8 @@ const DEFAULTS = {
       {label:"내 돈", note:"120주", amount:96},
       {label:"강지 돈", note:"990주", amount:792},
     ],
-    car: [
-      {label:"중고가", note:"", amount:2300},
-      {label:"선수금", note:"", amount:1500},
-      {label:"연 취등록세", note:"", amount:280},
-      {label:"연 자동차세", note:"", amount:30},
-      {label:"연 보험료", note:"", amount:55},
-      {label:"연 감가상각", note:"", amount:400},
-    ],
   },
-  checklist: {
-    c4:true, c5:true, c6:true, c7:true,
-    c8:true, c9:true, c10:true, c11:true, c12:true, c13:false, c14:false,
-    c15:false, c16:false, c17:false,
-  }
 };
-
-const CHECKLIST_ITEMS = [
-  {id:"c4", text:"부모급여 (월100만)"},
-  {id:"c5", text:"아동수당 (월10만)"},
-  {id:"c6", text:"첫만남이용권 (200만)"},
-  {id:"c7", text:"프리랜서 고용보험 미적용 지원"},
-  {id:"c8", text:"경기 산후조리비 (50만)"},
-  {id:"c9", text:"임신지원금 (30만)"},
-  {id:"c10", text:"지역출산지원금 (30만)"},
-  {id:"c11", text:"맘튼튼 축산물꾸러미"},
-  {id:"c12", text:"건강보험 피부양자 등록"},
-  {id:"c13", text:"출산용품지원 (15만)"},
-  {id:"c14", text:"청년내일계좌"},
-  {id:"c15", text:"양육수당"},
-  {id:"c16", text:"근로/자녀장려금"},
-  {id:"c17", text:"청년 주택드림"},
-];
 
 let state = JSON.parse(JSON.stringify(DEFAULTS));
 let saveTimer = null;
@@ -393,7 +365,6 @@ async function loadState(){
       for(const k in DEFAULTS.sections){
         if(!state.sections[k]) state.sections[k] = DEFAULTS.sections[k];
       }
-      state.checklist = {...DEFAULTS.checklist, ...(state.checklist||{})};
     }else{
       await saveState();
     }
@@ -458,6 +429,7 @@ function renderSection(sectionId){
   const rows = state.sections[sectionId];
   box.innerHTML = rows.map((row, idx)=>`
     <div class="edit-row" data-idx="${idx}">
+      <div class="drag-handle" data-role="handle">⠿</div>
       <div class="f-col">
         <input class="f-label" data-field="label" value="${escapeHtml(row.label)}" placeholder="항목명">
         <input class="f-note" data-field="note" value="${escapeHtml(row.note||'')}" placeholder="메모">
@@ -486,6 +458,76 @@ function renderSection(sectionId){
       scheduleSave();
     });
   });
+
+  attachDragHandlers(sectionId);
+}
+
+function attachDragHandlers(sectionId){
+  const box = document.getElementById("rows-"+sectionId);
+  box.querySelectorAll(".drag-handle").forEach(handle=>{
+    let longPressTimer = null;
+    let dragging = false;
+    let dragEl = null;
+    let startX = 0, startY = 0;
+
+    const cancelPending = ()=>{
+      clearTimeout(longPressTimer);
+    };
+
+    const onMove = (e)=>{
+      if(!dragging){
+        const dx = Math.abs(e.clientX - startX);
+        const dy = Math.abs(e.clientY - startY);
+        if(dx > 10 || dy > 10) cancelPending();
+        return;
+      }
+      e.preventDefault();
+      const rows = Array.from(box.querySelectorAll(".edit-row"));
+      const clientY = e.clientY;
+      for(const r of rows){
+        if(r === dragEl) continue;
+        const rect = r.getBoundingClientRect();
+        const mid = rect.top + rect.height/2;
+        if(clientY < mid){
+          if(r.previousElementSibling !== dragEl) box.insertBefore(dragEl, r);
+          break;
+        }else if(!r.nextElementSibling){
+          box.appendChild(dragEl);
+          break;
+        }
+      }
+    };
+
+    const onUp = ()=>{
+      cancelPending();
+      if(dragging){
+        dragging = false;
+        dragEl.classList.remove("dragging");
+        document.body.style.userSelect = "";
+        const newOrderIdx = Array.from(box.querySelectorAll(".edit-row"))
+          .map(r=>parseInt(r.getAttribute("data-idx"),10));
+        const oldArr = state.sections[sectionId];
+        state.sections[sectionId] = newOrderIdx.map(i=>oldArr[i]);
+        renderSection(sectionId);
+        scheduleSave();
+      }
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+
+    handle.addEventListener("pointerdown", (e)=>{
+      startX = e.clientX; startY = e.clientY;
+      dragEl = handle.closest(".edit-row");
+      longPressTimer = setTimeout(()=>{
+        dragging = true;
+        dragEl.classList.add("dragging");
+        document.body.style.userSelect = "none";
+        if(navigator.vibrate) navigator.vibrate(15);
+      }, 350);
+      document.addEventListener("pointermove", onMove, {passive:false});
+      document.addEventListener("pointerup", onUp);
+    });
+  });
 }
 
 function renderSubtotal(sectionId){
@@ -511,33 +553,12 @@ document.querySelectorAll(".add-btn").forEach(btn=>{
   });
 });
 
-function renderChecklist(){
-  const box = document.getElementById("checklistBox");
-  box.innerHTML = CHECKLIST_ITEMS.map(item=>{
-    const isChecked = !!state.checklist[item.id];
-    return `
-      <label class="check-item ${isChecked?'done':''}">
-        <input type="checkbox" data-id="${item.id}" ${isChecked?'checked':''}>
-        <span class="ct">${item.text}</span>
-      </label>`;
-  }).join("");
-  box.querySelectorAll("input[type=checkbox]").forEach(cb=>{
-    cb.addEventListener("change", (e)=>{
-      const id = e.target.getAttribute("data-id");
-      state.checklist[id] = e.target.checked;
-      renderChecklist();
-      scheduleSave();
-    });
-  });
-}
-
 function renderAll(){
   renderSummary();
-  ["shared","mine","mineLoans","wife","wifeLoans","stocks","car"].forEach(id=>{
+  ["shared","mine","mineLoans","wife","wifeLoans","stocks"].forEach(id=>{
     renderSection(id);
     renderSubtotal(id);
   });
-  renderChecklist();
 }
 
 loadState();
